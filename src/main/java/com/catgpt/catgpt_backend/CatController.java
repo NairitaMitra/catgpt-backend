@@ -1,10 +1,11 @@
 package com.catgpt.catgpt_backend;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -15,12 +16,14 @@ public class CatController {
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    private final WebClient webClient = WebClient.create();
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @PostMapping("/ask")
     public String askQuestion(@RequestBody String question) {
 
-        if (!isCatQuestion(question.toLowerCase())) {
+        String lowerQuestion = question.toLowerCase();
+
+        if (!isCatQuestion(lowerQuestion)) {
             return "🚫 I am CatGPT. I only answer cat-related questions.";
         }
 
@@ -31,60 +34,102 @@ public class CatController {
 
                     You ONLY answer questions related to cats.
 
-                    Topics allowed:
+                    Allowed topics:
                     - cat behavior
                     - cat sounds
-                    - cat health
+                    - cat food
                     - cat medicines
-                    - food
-                    - shopping
+                    - cat grooming
+                    - cat shopping
+                    - cat breeds
+                    - cat health
                     - vet guidance
-                    - breeds
 
-                    If unrelated to cats, refuse.
+                    Keep answers short and useful.
 
                     User Question:
                     """ + question;
 
             String url =
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="
                             + apiKey;
 
-            Map<String, Object> body = Map.of(
-                    "contents", new Object[]{
-                            Map.of("parts", new Object[]{
-                                    Map.of("text", prompt)
-                            })
-                    }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> requestBody = Map.of(
+                    "contents", List.of(
+                            Map.of(
+                                    "parts", List.of(
+                                            Map.of("text", prompt)
+                                    )
+                            )
+                    )
             );
 
-            Map response = webClient.post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
+            HttpEntity<Map<String, Object>> request =
+                    new HttpEntity<>(requestBody, headers);
 
-            var candidates = (java.util.List<Map>) response.get("candidates");
-            var content = (Map) candidates.get(0).get("content");
-            var parts = (java.util.List<Map>) content.get("parts");
+            ResponseEntity<Map> response =
+                    restTemplate.postForEntity(url, request, Map.class);
 
-            return parts.get(0).get("text").toString();
+            Map responseBody = response.getBody();
+
+            List candidates =
+                    (List) responseBody.get("candidates");
+
+            if (candidates == null || candidates.isEmpty()) {
+                return getFallbackAnswer(lowerQuestion);
+            }
+
+            Map candidate =
+                    (Map) candidates.get(0);
+
+            Map content =
+                    (Map) candidate.get("content");
+
+            List parts =
+                    (List) content.get("parts");
+
+            Map firstPart =
+                    (Map) parts.get(0);
+
+            return firstPart.get("text").toString();
 
         } catch (Exception e) {
-            return "Something went wrong: " + e.getMessage();
+
+            // Uncomment next line if you want to see real error in terminal
+            // e.printStackTrace();
+
+            return getFallbackAnswer(lowerQuestion);
         }
     }
 
     private boolean isCatQuestion(String question) {
 
         String[] keywords = {
-                "cat", "kitten", "meow",
-                "pet", "fur", "litter",
-                "vet", "cat food",
-                "breed", "medicine",
-                "scratch", "bite"
+                "cat",
+                "cats",
+                "kitten",
+                "kittens",
+                "feline",
+                "meow",
+                "purr",
+                "tail",
+                "paw",
+                "whiskers",
+                "fur",
+                "litter",
+                "breed",
+                "grooming",
+                "cat food",
+                "vet",
+                "medicine",
+                "sleep",
+                "bite",
+                "scratch",
+                "colour",
+                "color"
         };
 
         for (String keyword : keywords) {
@@ -94,5 +139,34 @@ public class CatController {
         }
 
         return false;
+    }
+
+    private String getFallbackAnswer(String question) {
+
+        if (question.contains("sleep")) {
+            return "🐱 Cats usually sleep 12–16 hours a day. This is normal unless your cat seems sick or stops eating.";
+        }
+
+        if (question.contains("meow")) {
+            return "🐱 Cats meow to communicate with humans. Hunger, attention, stress, or affection can be reasons.";
+        }
+
+        if (question.contains("food")) {
+            return "🐱 Cats need protein-rich food. Commercial cat food, chicken, and fish are common choices.";
+        }
+
+        if (question.contains("colour") || question.contains("color")) {
+            return "🐱 Common cat colours include black, white, grey, ginger, orange, brown, and mixed patterns.";
+        }
+
+        if (question.contains("breed")) {
+            return "🐱 Popular cat breeds include Persian, Maine Coon, Siamese, Ragdoll, and British Shorthair.";
+        }
+
+        if (question.contains("medicine")) {
+            return "🐱 Always consult a veterinarian before giving medicine to your cat.";
+        }
+
+        return "🐱 I understand your cat question. Please try again later if you want an AI-generated answer.";
     }
 }
