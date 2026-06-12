@@ -13,58 +13,59 @@ import java.util.Map;
 @CrossOrigin("*")
 public class CatController {
 
-    @Value("${gemini.api.key}")
-    private String apiKey;
+    @Value("${groq.api.key}")
+    private String groqApiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
     @PostMapping("/ask")
     public String askQuestion(@RequestBody String question) {
 
-        String lowerQuestion = question.toLowerCase();
-
-        if (!isCatQuestion(lowerQuestion)) {
-            return "🚫 I am CatGPT. I only answer cat-related questions.";
+        if (question == null || question.trim().isEmpty()) {
+            return "🐱 Please ask me something about cats.";
         }
 
         try {
-
-            String prompt = """
-                    You are CatGPT.
-
-                    You ONLY answer questions related to cats.
-
-                    Allowed topics:
-                    - cat behavior
-                    - cat sounds
-                    - cat food
-                    - cat medicines
-                    - cat grooming
-                    - cat shopping
-                    - cat breeds
-                    - cat health
-                    - vet guidance
-
-                    Keep answers short and useful.
-
-                    User Question:
-                    """ + question;
-
-            String url =
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="
-                            + apiKey;
+            String url = "https://api.groq.com/openai/v1/chat/completions";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(groqApiKey);
 
             Map<String, Object> requestBody = Map.of(
-                    "contents", List.of(
+                    "model", "llama-3.1-8b-instant",
+                    "messages", List.of(
                             Map.of(
-                                    "parts", List.of(
-                                            Map.of("text", prompt)
-                                    )
+                                    "role", "system",
+                                    "content", """
+                                            You are CatGPT.
+
+                                            You ONLY answer cat-related questions.
+
+                                            Allowed topics:
+                                            - cat behavior
+                                            - cat sounds
+                                            - cat food
+                                            - cat medicine
+                                            - cat shopping
+                                            - cat breeds
+                                            - cat grooming
+                                            - vet guidance
+
+                                            If the user asks anything unrelated to cats, reply exactly:
+                                            🚫 I am CatGPT. I only answer cat-related questions.
+
+                                            Keep answers short, friendly, and useful.
+                                            For serious health issues, suggest contacting a vet.
+                                            """
+                            ),
+                            Map.of(
+                                    "role", "user",
+                                    "content", question
                             )
-                    )
+                    ),
+                    "temperature", 0.5,
+                    "max_tokens", 250
             );
 
             HttpEntity<Map<String, Object>> request =
@@ -73,100 +74,47 @@ public class CatController {
             ResponseEntity<Map> response =
                     restTemplate.postForEntity(url, request, Map.class);
 
-            Map responseBody = response.getBody();
+            Map body = response.getBody();
+            List choices = (List) body.get("choices");
 
-            List candidates =
-                    (List) responseBody.get("candidates");
-
-            if (candidates == null || candidates.isEmpty()) {
-                return getFallbackAnswer(lowerQuestion);
+            if (choices == null || choices.isEmpty()) {
+                return fallback(question);
             }
 
-            Map candidate =
-                    (Map) candidates.get(0);
+            Map firstChoice = (Map) choices.get(0);
+            Map message = (Map) firstChoice.get("message");
 
-            Map content =
-                    (Map) candidate.get("content");
-
-            List parts =
-                    (List) content.get("parts");
-
-            Map firstPart =
-                    (Map) parts.get(0);
-
-            return firstPart.get("text").toString();
+            return message.get("content").toString();
 
         } catch (Exception e) {
-
-            // Uncomment next line if you want to see real error in terminal
-            // e.printStackTrace();
-
-            return getFallbackAnswer(lowerQuestion);
+            return fallback(question);
         }
     }
 
-    private boolean isCatQuestion(String question) {
+    private String fallback(String question) {
+        String q = question.toLowerCase();
 
-        String[] keywords = {
-                "cat",
-                "cats",
-                "kitten",
-                "kittens",
-                "feline",
-                "meow",
-                "purr",
-                "tail",
-                "paw",
-                "whiskers",
-                "fur",
-                "litter",
-                "breed",
-                "grooming",
-                "cat food",
-                "vet",
-                "medicine",
-                "sleep",
-                "bite",
-                "scratch",
-                "colour",
-                "color"
-        };
-
-        for (String keyword : keywords) {
-            if (question.contains(keyword)) {
-                return true;
-            }
+        if (!q.contains("cat") && !q.contains("kitten") && !q.contains("meow")
+                && !q.contains("feline") && !q.contains("paw")) {
+            return "🚫 I am CatGPT. I only answer cat-related questions.";
         }
 
-        return false;
-    }
-
-    private String getFallbackAnswer(String question) {
-
-        if (question.contains("sleep")) {
-            return "🐱 Cats usually sleep 12–16 hours a day. This is normal unless your cat seems sick or stops eating.";
+        if (q.contains("sleep")) {
+            return "🐱 Cats usually sleep 12–16 hours a day. This is normal unless your cat seems weak or stops eating.";
         }
 
-        if (question.contains("meow")) {
-            return "🐱 Cats meow to communicate with humans. Hunger, attention, stress, or affection can be reasons.";
+        if (q.contains("meow")) {
+            return "🐱 Cats meow for attention, hunger, stress, greeting, or communication.";
         }
 
-        if (question.contains("food")) {
-            return "🐱 Cats need protein-rich food. Commercial cat food, chicken, and fish are common choices.";
+        if (q.contains("food")) {
+            return "🍗 Cats need protein-rich food. Balanced cat food is usually safest.";
         }
 
-        if (question.contains("colour") || question.contains("color")) {
-            return "🐱 Common cat colours include black, white, grey, ginger, orange, brown, and mixed patterns.";
+        if (q.contains("medicine")) {
+            return "💊 Never give human medicine to cats. Please consult a vet.";
         }
 
-        if (question.contains("breed")) {
-            return "🐱 Popular cat breeds include Persian, Maine Coon, Siamese, Ragdoll, and British Shorthair.";
-        }
-
-        if (question.contains("medicine")) {
-            return "🐱 Always consult a veterinarian before giving medicine to your cat.";
-        }
-
-        return "🐱 I understand your cat question. Please try again later if you want an AI-generated answer.";
+        return "🐱 I understand your cat question. Please try again in a moment.";
     }
 }
