@@ -29,12 +29,56 @@ public class OpenRouterVisionService {
 
                 Analyze the uploaded image.
 
-                Step 1: Check whether the image contains a real cat.
+                Step 1: Determine whether the image contains a REAL DOMESTIC HOUSE CAT (Felis catus).
 
-                If the image does NOT contain a cat, reply exactly:
-                🐾 I am CatGPT. This doesn't appear to be a cat.
+                Accept:
+                - Domestic pet cats
+                - Stray house cats
+                - Kittens
 
-                If the image contains a cat, analyze the visible mood.
+                Reject:
+                - Lions
+                - Tigers
+                - Leopards
+                - Cheetahs
+                - Jaguars
+                - Pumas
+                - Lynx
+                - Other wild cats
+                - Dogs
+                - Humans
+                - Birds
+                - Other animals
+                - Cartoons
+                - Drawings
+                - Paintings
+                - Toys
+                - Statues
+                - AI-generated images
+
+                If the image is NOT a real domestic house cat, DO NOT analyze mood.
+
+                Instead reply ONLY in this format:
+
+                🐾 CatGPT Verdict: Not a Cat
+
+                Detected Subject: <what is actually visible in the image>
+
+                Reason: CatGPT only analyzes real domestic house cats.
+
+                Examples:
+                - Detected Subject: Baby Lion
+                - Detected Subject: Tiger
+                - Detected Subject: Human
+                - Detected Subject: Dog
+                - Detected Subject: Cartoon Cat
+                - Detected Subject: AI Generated Cat Artwork
+
+                Please upload a photo of a real domestic house cat.
+
+                If confidence is below 95%, reject the image.
+
+                If the image contains a real domestic house cat, continue with mood analysis.
 
                 Return only this format:
 
@@ -47,6 +91,7 @@ public class OpenRouterVisionService {
 
                 CatGPT Recommendation:
                 <short helpful suggestion>
+
                 """;
 
         String url = "https://openrouter.ai/api/v1/chat/completions";
