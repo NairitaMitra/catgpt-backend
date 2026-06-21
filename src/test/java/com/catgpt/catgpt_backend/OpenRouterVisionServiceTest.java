@@ -52,6 +52,20 @@ class OpenRouterVisionServiceTest {
     }
 
     @Test
+    void analyzeCatMoodReturnsFallbackWhenResponseBodyIsNull() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "cat.png", "image/png", "image-bytes".getBytes()
+        );
+
+        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok().build());
+
+        String result = service.analyzeCatMood(file);
+
+        assertThat(result).isEqualTo("🐾 CatGPT could not analyze this image right now.");
+    }
+
+    @Test
     void analyzeCatMoodReturnsFallbackWhenResponseBodyIsMissingChoices() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "cat.png", "image/png", "image-bytes".getBytes()
@@ -59,6 +73,22 @@ class OpenRouterVisionServiceTest {
 
         when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(ResponseEntity.ok(Map.of()));
+
+        String result = service.analyzeCatMood(file);
+
+        assertThat(result).isEqualTo("🐾 CatGPT could not analyze this image right now.");
+    }
+
+    @Test
+    void analyzeCatMoodReturnsFallbackWhenChoicesListIsEmpty() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "cat.png", "image/png", "image-bytes".getBytes()
+        );
+
+        Map<String, Object> responseBody = Map.of("choices", List.of());
+
+        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(responseBody));
 
         String result = service.analyzeCatMood(file);
 

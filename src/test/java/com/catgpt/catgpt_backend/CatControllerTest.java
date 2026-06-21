@@ -35,13 +35,23 @@ class CatControllerTest {
     }
 
     @Test
-    void askQuestionReturnsFallbackWhenApiCallFails() {
+    void askQuestionReturnsFallbackForUnrelatedQuestionWhenApiCallFails() {
         when(restTemplate.postForEntity(anyString(), any(), eq(Map.class)))
                 .thenThrow(new RuntimeException("boom"));
 
-        String response = controller.askQuestion("Are cats mammals?");
+        String response = controller.askQuestion("What is the capital of France?");
 
         assertThat(response).isEqualTo("🚫 I am CatGPT. I only answer cat-related questions.");
+    }
+
+    @Test
+    void askQuestionReturnsGenericFallbackForCatQuestionWhenApiCallFails() {
+        when(restTemplate.postForEntity(anyString(), any(), eq(Map.class)))
+                .thenThrow(new RuntimeException("boom"));
+
+        String response = controller.askQuestion("Are cats good pets?");
+
+        assertThat(response).isEqualTo("🐱 I understand your cat question. Please try again in a moment.");
     }
 
     @Test
@@ -68,5 +78,45 @@ class CatControllerTest {
         String response = controller.askQuestion("cat sleep");
 
         assertThat(response).isEqualTo("🐱 Cats usually sleep 12–16 hours a day. This is normal unless your cat seems weak or stops eating.");
+    }
+
+    @Test
+    void askQuestionReturnsSleepFallbackForSleepKeyword() {
+        when(restTemplate.postForEntity(anyString(), any(), eq(Map.class)))
+                .thenThrow(new RuntimeException("boom"));
+
+        String response = controller.askQuestion("How much do cats sleep?");
+
+        assertThat(response).isEqualTo("🐱 Cats usually sleep 12–16 hours a day. This is normal unless your cat seems weak or stops eating.");
+    }
+
+    @Test
+    void askQuestionReturnsMeowFallbackForMeowKeyword() {
+        when(restTemplate.postForEntity(anyString(), any(), eq(Map.class)))
+                .thenThrow(new RuntimeException("boom"));
+
+        String response = controller.askQuestion("Why do cats meow at night?");
+
+        assertThat(response).isEqualTo("🐱 Cats meow for attention, hunger, stress, greeting, or communication.");
+    }
+
+    @Test
+    void askQuestionReturnsFoodFallbackForFoodKeyword() {
+        when(restTemplate.postForEntity(anyString(), any(), eq(Map.class)))
+                .thenThrow(new RuntimeException("boom"));
+
+        String response = controller.askQuestion("What food is good for cats?");
+
+        assertThat(response).isEqualTo("🍗 Cats need protein-rich food. Balanced cat food is usually safest.");
+    }
+
+    @Test
+    void askQuestionReturnsMedicineFallbackForMedicineKeyword() {
+        when(restTemplate.postForEntity(anyString(), any(), eq(Map.class)))
+                .thenThrow(new RuntimeException("boom"));
+
+        String response = controller.askQuestion("Can I give my cat medicine?");
+
+        assertThat(response).isEqualTo("💊 Never give human medicine to cats. Please consult a vet.");
     }
 }
